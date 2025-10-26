@@ -1,0 +1,233 @@
+{
+  "name": "preenchimento-planilhas",
+  "nodes": [
+    {
+      "parameters": {
+        "command": "dir \"C:\\Users\\Gabriel Bezerra\\Desktop\\marcelle\"\n"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        352
+      ],
+      "id": "c0bcce7a-5860-413e-a9ac-6b6447d38394",
+      "name": "Execute Command"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "input_data = items[0].json\ncommand_output = input_data.get('stdout', '')\n\nfinal_results = []\n\nfor line in command_output.splitlines():\n    \n    if '.txt' in line and '<DIR>' not in line:\n                       \n        parts = line.split()\n        filename = parts[-1]         \n     \n        try:\n            name_without_extension = filename.removesuffix('.txt')\n            data_parts = name_without_extension.split('-')\n            \n            nome = data_parts[0]\n            valor = float(data_parts[1])\n            \n            date_raw = data_parts[2]\n            data_formatada = f\"{date_raw[0:2]}/{date_raw[2:4]}/{date_raw[4:8]}\"            \n           \n            processed_data = {\n                'nome': nome,\n                'valor': valor,\n                'data': data_formatada\n            }            \n            \n            final_results.append({'json': processed_data})\n            \n        except Exception as e:          \n            print(f\"Arquivo {filename} ignorado por não seguir o padrão. Erro: {e}\")\n            pass\n\nreturn final_results"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -112,
+        352
+      ],
+      "id": "2fbd3e36-dfb4-465f-9c5a-718ea0b8d944",
+      "name": "Code in Python (Beta)",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "add the spreadsheet link",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Página1",
+          "cachedResultUrl": "add the spreadsheet link"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "nome": "={{ $json.nome }}",
+            "valor": "={{ $json.valor }}",
+            "data": "={{ $json.data }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "nome",
+              "displayName": "nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "valor",
+              "displayName": "valor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data",
+              "displayName": "data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        192,
+        336
+      ],
+      "id": "46f6fb78-f98b-4445-b1e0-ffff1e51518f",
+      "name": "Append or update row in sheet",
+      "executeOnce": false,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Add your own Google Sheets credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "=0 8 1,15 * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -656,
+        352
+      ],
+      "id": "b88ceeab-c9a9-44d6-af1d-70c41e34fde6",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "sendTo": "gabrieleliasmega@gmail.com",
+        "subject": "Planilha notas",
+        "emailType": "text",
+        "message": "Planilha de notas preenchida",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        688,
+        336
+      ],
+      "id": "44481410-19d7-4cfe-8fe1-6367ac8b1550",
+      "name": "Send a message",
+      "webhookId": "60eed85e-7be6-459c-83fc-5347bc006222",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "SCsysMY2KD19aAvD",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# Loop over input items and add a new field called 'myNewField' to the JSON of each one\n\nreturn {}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        336
+      ],
+      "id": "0f3bfaf2-5310-4e0a-8c85-ddef372f3c01",
+      "name": "Code in Python (Beta)1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Command": {
+      "main": [
+        [
+          {
+            "node": "Code in Python (Beta)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in Python (Beta)": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in Python (Beta)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in Python (Beta)1": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c2e452b8-45b0-4e2b-9416-b718102784c2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4251c082cc9ffd6f5383fcb94d7efcbe37ea2a3225d8b00e7c33611c7b377917"
+  },
+  "id": "goGrpEvt1v9TkgP1",
+  "tags": []
+}
