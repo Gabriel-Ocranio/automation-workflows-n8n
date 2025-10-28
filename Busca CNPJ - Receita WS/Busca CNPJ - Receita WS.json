@@ -1,0 +1,281 @@
+{
+  "name": "Busca CNPJ - Receita WS",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "product/busca-cnpj-ws",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "d0f4ef0e-9184-47f0-82cf-cbe94acb07aa",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        -288,
+        -32
+      ],
+      "webhookId": "2c82ff78-6b36-4118-a1b6-850e061a55d7"
+    },
+    {
+      "parameters": {
+        "unit": "seconds"
+      },
+      "id": "ee847bc9-cbcf-4c32-a32e-e4b7e25c6ed5",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        416,
+        96
+      ],
+      "webhookId": "dd98cfca-311c-44ba-9533-95e4b1000d4b"
+    },
+    {
+      "parameters": {
+        "jsCode": "let cnpjParam = $input.first().json.query.cnpj;\nlet obtToResponse = {\n  data: cnpjParam,\n  message: \"CNPJ Válido.\",\n  error: false\n}\n\nif (cnpjParam != null && cnpjParam != \"\") {\n  cnpjParam = cnpjParam.replace(/\\D/g, \"\");\n  if (cnpjParam.length !== 14) {\n    obtToResponse.error = true;\n    obtToResponse.message = \"CNPJ Inválido ou Incompleto. Favor Revisá-lo com 14 digitos.\";\n  }\n}\n\n// Elimina CNPJs invalidos conhecidos\nif (cnpjParam == \"00000000000000\" ||\n    cnpjParam == \"11111111111111\" ||\n    cnpjParam == \"22222222222222\" ||\n    cnpjParam == \"33333333333333\" ||\n    cnpjParam == \"44444444444444\" ||\n    cnpjParam == \"55555555555555\" ||\n    cnpjParam == \"66666666666666\" ||\n    cnpjParam == \"77777777777777\" ||\n    cnpjParam == \"88888888888888\" ||\n    cnpjParam == \"99999999999999\") {\n      obtToResponse.error = true;\n      obtToResponse.message = \"CNPJ Inválido ou Incompleto. Favor Revisá-lo com 14 digitos.\";\n}\n\n\n// Valida DVs\ntamanho = cnpjParam.length - 2\nnumeros = cnpjParam.substring(0, tamanho);\ndigitos = cnpjParam.substring(tamanho);\nsoma = 0;\npos = tamanho - 7;\nfor (i = tamanho; i >= 1; i--) {\n    soma += numeros.charAt(tamanho - i) * pos--;\n    if (pos < 2)\n        pos = 9;\n}\nresultado = soma % 11 < 2 ? 0 : 11 - soma % 11;\nif (resultado != digitos.charAt(0)) {\n\n      obtToResponse.error = true;\n      obtToResponse.message = \"CNPJ Inválido ou Incompleto. Favor Revisá-lo com 14 digitos.\";\n  \n}\n\n\ntamanho = tamanho + 1;\nnumeros = cnpjParam.substring(0, tamanho);\nsoma = 0;\npos = tamanho - 7;\nfor (i = tamanho; i >= 1; i--) {\n  soma += numeros.charAt(tamanho - i) * pos--;\n  if (pos < 2)\n      pos = 9;\n}\nresultado = soma % 11 < 2 ? 0 : 11 - soma % 11;\nif (resultado != digitos.charAt(1)) {\n  obtToResponse.error = true;\n  obtToResponse.message = \"CNPJ Inválido ou Incompleto. Favor Revisá-lo com 14 digitos.\";\n}\n\nreturn obtToResponse;"
+      },
+      "id": "f8c020d4-a1a1-4e7a-9faf-6bb7def042cb",
+      "name": "Code - Valida CNPJ e prepara requisição",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "4cfd98fd-1145-4b55-8393-aa74cd6efcaf",
+              "leftValue": "={{ $json.error.toString() }}",
+              "rightValue": "={{ \"true\" }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f1efebc0-a6c9-4e88-8971-ba9d0e926ae1",
+      "name": "If - CNPJ Válido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        160,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "35345361-e968-4ebe-ab21-c7c54596f8d5",
+      "name": "Respond to Webhook - Status 400",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        416,
+        -176
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "ae061db7-c3d1-4482-ad53-8538d020e353",
+      "name": "Respond to Webhook - Status 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1216,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const classificacoesConta = [\n  {\n    \"codigo\": \"101-5\",\n    \"rotulo\": \"Órgão Público do Poder Executivo Federal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"102-3\",\n    \"rotulo\": \"Órgão Público do Poder Executivo Estadual ou do Distrito Federal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"103-1\",\n    \"rotulo\": \"Órgão Público do Poder Executivo Municipal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"104-0\",\n    \"rotulo\": \"Órgão Público do Poder Legislativo Federal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"105-8\",\n    \"rotulo\": \"Órgão Público do Poder Legislativo Estadual ou do Distrito Federal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"106-6\",\n    \"rotulo\": \"Órgão Público do Poder Legislativo Municipal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"107-4\",\n    \"rotulo\": \"Órgão Público do Poder Judiciário Federal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"108-2\",\n    \"rotulo\": \"Órgão Público do Poder Judiciário Estadual\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"110-4\",\n    \"rotulo\": \"Autarquia Federal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"111-2\",\n    \"rotulo\": \"Autarquia Estadual ou do Distrito Federal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"112-0\",\n    \"rotulo\": \"Autarquia Municipal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"113-9\",\n    \"rotulo\": \"Fundação Pública de Direito Público Federal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"114-7\",\n    \"rotulo\": \"Fundação Pública de Direito Público Estadual ou do Distrito Federal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"115-5\",\n    \"rotulo\": \"Fundação Pública de Direito Público Municipal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"116-3\",\n    \"rotulo\": \"Órgão Público Autônomo Federal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"117-1\",\n    \"rotulo\": \"Órgão Público Autônomo Estadual ou do Distrito Federal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"118-0\",\n    \"rotulo\": \"Órgão Público Autônomo Municipal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"119-8\",\n    \"rotulo\": \"Comissão Polinacional\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"121-0\",\n    \"rotulo\": \"Consórcio Público de Direito Público (Associação Pública)\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"122-8\",\n    \"rotulo\": \"Consórcio Público de Direito Privado\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"123-6\",\n    \"rotulo\": \"Estado ou Distrito Federal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"124-4\",\n    \"rotulo\": \"Município\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"125-2\",\n    \"rotulo\": \"Fundação Pública de Direito Privado Federal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"126-0\",\n    \"rotulo\": \"Fundação Pública de Direito Privado Estadual ou do Distrito Federal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"127-9\",\n    \"rotulo\": \"Fundação Pública de Direito Privado Municipal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"128-7\",\n    \"rotulo\": \"Fundo Público da Administração Indireta Federal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"129-5\",\n    \"rotulo\": \"Fundo Público da Administração Indireta Estadual ou do Distrito Federal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"130-9\",\n    \"rotulo\": \"Fundo Público da Administração Indireta Municipal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"131-7\",\n    \"rotulo\": \"Fundo Público da Administração Direta Federal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"132-5\",\n    \"rotulo\": \"Fundo Público da Administração Direta Estadual ou do Distrito Federal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"133-3\",\n    \"rotulo\": \"Fundo Público da Administração Direta Municipal\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"134-1\",\n    \"rotulo\": \"União\",\n    \"classificacao\": {\n      \"codigo\": 1,\n      \"rotulo\": \"Administração Pública\"\n    }\n  },\n  {\n    \"codigo\": \"201-1\",\n    \"rotulo\": \"Empresa Pública\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"203-8\",\n    \"rotulo\": \"Sociedade de Economia Mista\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"204-6\",\n    \"rotulo\": \"Sociedade Anônima Aberta\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"205-4\",\n    \"rotulo\": \"Sociedade Anônima Fechada\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"206-2\",\n    \"rotulo\": \"Sociedade Empresária Limitada\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"207-0\",\n    \"rotulo\": \"Sociedade Empresária em Nome Coletivo\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"208-9\",\n    \"rotulo\": \"Sociedade Empresária em Comandita Simples\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"209-7\",\n    \"rotulo\": \"Sociedade Empresária em Comandita por Ações\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"212-7\",\n    \"rotulo\": \"Sociedade em Conta de Participação\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"213-5\",\n    \"rotulo\": \"Empresário (Individual)\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"214-3\",\n    \"rotulo\": \"Cooperativa\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"215-1\",\n    \"rotulo\": \"Consórcio de Sociedades\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"216-0\",\n    \"rotulo\": \"Grupo de Sociedades\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"217-8\",\n    \"rotulo\": \"Estabelecimento, no Brasil, de Sociedade Estrangeira\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"219-4\",\n    \"rotulo\": \"Estabelecimento, no Brasil, de Empresa Binacional Argentino-Brasileira\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"221-6\",\n    \"rotulo\": \"Empresa Domiciliada no Exterior\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"222-4\",\n    \"rotulo\": \"Clube/Fundo de Investimento\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"223-2\",\n    \"rotulo\": \"Sociedade Simples Pura\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"224-0\",\n    \"rotulo\": \"Sociedade Simples Limitada\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"225-9\",\n    \"rotulo\": \"Sociedade Simples em Nome Coletivo\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"226-7\",\n    \"rotulo\": \"Sociedade Simples em Comandita Simples\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"227-5\",\n    \"rotulo\": \"Empresa Binacional\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"228-3\",\n    \"rotulo\": \"Consórcio de Empregadores\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"229-1\",\n    \"rotulo\": \"Consórcio Simples\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"230-5\",\n    \"rotulo\": \"Empresa Individual de Responsabilidade Limitada (de Natureza Empresária)\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"231-3\",\n    \"rotulo\": \"Empresa Individual de Responsabilidade Limitada (de Natureza Simples)\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"232-1\",\n    \"rotulo\": \"Sociedade Unipessoal de Advogados\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"233-0\",\n    \"rotulo\": \"Cooperativas de Consumo\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"234-8\",\n    \"rotulo\": \"Empresa Simples de Inovação - Inova Simples\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"235-6\",\n    \"rotulo\": \"Investidor Não Residente\",\n    \"classificacao\": {\n      \"codigo\": 2,\n      \"rotulo\": \"Entidades Empresariais\"\n    }\n  },\n  {\n    \"codigo\": \"303-4\",\n    \"rotulo\": \"Serviço Notarial e Registral (Cartório)\",\n    \"classificacao\": {\n      \"codigo\": 3,\n      \"rotulo\": \"Entidades sem Fins Lucrativos\"\n    }\n  },\n  {\n    \"codigo\": \"306-9\",\n    \"rotulo\": \"Fundação Privada\",\n    \"classificacao\": {\n      \"codigo\": 3,\n      \"rotulo\": \"Entidades sem Fins Lucrativos\"\n    }\n  },\n  {\n    \"codigo\": \"307-7\",\n    \"rotulo\": \"Serviço Social Autônomo\",\n    \"classificacao\": {\n      \"codigo\": 3,\n      \"rotulo\": \"Entidades sem Fins Lucrativos\"\n    }\n  },\n  {\n    \"codigo\": \"308-5\",\n    \"rotulo\": \"Condomínio Edilício\",\n    \"classificacao\": {\n      \"codigo\": 3,\n      \"rotulo\": \"Entidades sem Fins Lucrativos\"\n    }\n  },\n  {\n    \"codigo\": \"310-7\",\n    \"rotulo\": \"Comissão de Conciliação Prévia\",\n    \"classificacao\": {\n      \"codigo\": 3,\n      \"rotulo\": \"Entidades sem Fins Lucrativos\"\n    }\n  },\n  {\n    \"codigo\": \"311-5\",\n    \"rotulo\": \"Entidade de Mediação e Arbitragem\",\n    \"classificacao\": {\n      \"codigo\": 3,\n      \"rotulo\": \"Entidades sem Fins Lucrativos\"\n    }\n  },\n  {\n    \"codigo\": \"313-1\",\n    \"rotulo\": \"Entidade Sindical\",\n    \"classificacao\": {\n      \"codigo\": 3,\n      \"rotulo\": \"Entidades sem Fins Lucrativos\"\n    }\n  },\n  {\n    \"codigo\": \"320-4\",\n    \"rotulo\": \"Estabelecimento, no Brasil, de Fundação ou Associação Estrangeiras\",\n    \"classificacao\": {\n      \"codigo\": 3,\n      \"rotulo\": \"Entidades sem Fins Lucrativos\"\n    }\n  },\n  {\n    \"codigo\": \"321-2\",\n    \"rotulo\": \"Fundação ou Associação Domiciliada no Exterior\",\n    \"classificacao\": {\n      \"codigo\": 3,\n      \"rotulo\": \"Entidades sem Fins Lucrativos\"\n    }\n  },\n  {\n    \"codigo\": \"322-0\",\n    \"rotulo\": \"Organização Religiosa\",\n    \"classificacao\": {\n      \"codigo\": 3,\n      \"rotulo\": \"Entidades sem Fins Lucrativos\"\n    }\n  },\n  {\n    \"codigo\": \"323-9\",\n    \"rotulo\": \"Comunidade Indígena\",\n    \"classificacao\": {\n      \"codigo\": 3,\n      \"rotulo\": \"Entidades sem Fins Lucrativos\"\n    }\n  },\n  {\n    \"codigo\": \"324-7\",\n    \"rotulo\": \"Fundo Privado\",\n    \"classificacao\": {\n      \"codigo\": 3,\n      \"rotulo\": \"Entidades sem Fins Lucrativos\"\n    }\n  },\n  {\n    \"codigo\": \"325-5\",\n    \"rotulo\": \"Órgão de Direção Nacional de Partido Político\",\n    \"classificacao\": {\n      \"codigo\": 3,\n      \"rotulo\": \"Entidades sem Fins Lucrativos\"\n    }\n  },\n  {\n    \"codigo\": \"326-3\",\n    \"rotulo\": \"Órgão de Direção Regional de Partido Político\",\n    \"classificacao\": {\n      \"codigo\": 3,\n      \"rotulo\": \"Entidades sem Fins Lucrativos\"\n    }\n  },\n  {\n    \"codigo\": \"327-1\",\n    \"rotulo\": \"Órgão de Direção Local de Partido Político\",\n    \"classificacao\": {\n      \"codigo\": 3,\n      \"rotulo\": \"Entidades sem Fins Lucrativos\"\n    }\n  },\n  {\n    \"codigo\": \"328-0\",\n    \"rotulo\": \"Comitê Financeiro de Partido Político\",\n    \"classificacao\": {\n      \"codigo\": 3,\n      \"rotulo\": \"Entidades sem Fins Lucrativos\"\n    }\n  },\n  {\n    \"codigo\": \"329-8\",\n    \"rotulo\": \"Frente Plebiscitária ou Referendária\",\n    \"classificacao\": {\n      \"codigo\": 3,\n      \"rotulo\": \"Entidades sem Fins Lucrativos\"\n    }\n  },\n  {\n    \"codigo\": \"330-1\",\n    \"rotulo\": \"Organização Social (OS)\",\n    \"classificacao\": {\n      \"codigo\": 3,\n      \"rotulo\": \"Entidades sem Fins Lucrativos\"\n    }\n  },\n  {\n    \"codigo\": \"331-0\",\n    \"rotulo\": \"Demais Condomínios\",\n    \"classificacao\": {\n      \"codigo\": 3,\n      \"rotulo\": \"Entidades sem Fins Lucrativos\"\n    }\n  },\n  {\n    \"codigo\": \"332-8\",\n    \"rotulo\": \"Plano de Benefícios de Previdência Complementar Fechada\",\n    \"classificacao\": {\n      \"codigo\": 3,\n      \"rotulo\": \"Entidades sem Fins Lucrativos\"\n    }\n  },\n  {\n    \"codigo\": \"399-9\",\n    \"rotulo\": \"Associação Privada\",\n    \"classificacao\": {\n      \"codigo\": 3,\n      \"rotulo\": \"Entidades sem Fins Lucrativos\"\n    }\n  },\n  {\n    \"codigo\": \"401-4\",\n    \"rotulo\": \"Empresa Individual Imobiliária\",\n    \"classificacao\": {\n      \"codigo\": 4,\n      \"rotulo\": \"Pessoas Físicas\"\n    }\n  },\n  {\n    \"codigo\": \"402-2\",\n    \"rotulo\": \"Segurado Especial\",\n    \"classificacao\": {\n      \"codigo\": 4,\n      \"rotulo\": \"Pessoas Físicas\"\n    }\n  },\n  {\n    \"codigo\": \"408-1\",\n    \"rotulo\": \"Contribuinte individual\",\n    \"classificacao\": {\n      \"codigo\": 4,\n      \"rotulo\": \"Pessoas Físicas\"\n    }\n  },\n  {\n    \"codigo\": \"409-0\",\n    \"rotulo\": \"Candidato a Cargo Político Eletivo\",\n    \"classificacao\": {\n      \"codigo\": 4,\n      \"rotulo\": \"Pessoas Físicas\"\n    }\n  },\n  {\n    \"codigo\": \"411-1\",\n    \"rotulo\": \"Leiloeiro\",\n    \"classificacao\": {\n      \"codigo\": 4,\n      \"rotulo\": \"Pessoas Físicas\"\n    }\n  },\n  {\n    \"codigo\": \"412-0\",\n    \"rotulo\": \"Produtor Rural (Pessoa Física)\",\n    \"classificacao\": {\n      \"codigo\": 4,\n      \"rotulo\": \"Pessoas Físicas\"\n    }\n  }\n];\n\nconst naturezaJuridicaDoCnpj = $input.first().json.natureza_juridica.split(\" - \");\nconst naturezaJuridicaEncontrada = classificacoesConta.filter(v => naturezaJuridicaDoCnpj[0] == v.codigo);\n\nreturn {\n  ... $input.first().json,\n  ...{\n    classificacao_conta: (naturezaJuridicaEncontrada.length) ? naturezaJuridicaEncontrada[0] : {}\n  }\n}"
+      },
+      "id": "07ba9fb3-e58b-4fc2-8a10-8818636e4c19",
+      "name": "Code - Classificação empresa",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        816,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  data: $input.first().json,\n  error: false,\n  message: $('Code - Valida CNPJ e prepara requisição').first().json.message\n}"
+      },
+      "id": "0d0a83fc-4b36-453a-bb2c-12035fcb5f84",
+      "name": "Code - Prepara para retorno de API",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://receitaws.com.br/v1/cnpj/{{ $('Code - Valida CNPJ e prepara requisição').item.json[\"data\"] }}",
+        "options": {}
+      },
+      "id": "53914a00-2682-4e92-89bc-4f3c311986b9",
+      "name": "HTTP Request - Busca dados do CNPJ",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        608,
+        96
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "user-agent": "PostmanRuntime/7.49.0",
+            "accept": "*/*",
+            "cache-control": "no-cache",
+            "postman-token": "0b2e371d-7eee-4e65-9c01-0f1fc52bb383",
+            "host": "localhost:5678",
+            "accept-encoding": "gzip, deflate, br",
+            "connection": "keep-alive"
+          },
+          "params": {},
+          "query": {
+            "cnpj": "42277434000183"
+          },
+          "body": {},
+          "webhookUrl": "http://localhost:5678/webhook-test/product/busca-cnpj-ws",
+          "executionMode": "test"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code - Valida CNPJ e prepara requisição",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Busca dados do CNPJ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Valida CNPJ e prepara requisição": {
+      "main": [
+        [
+          {
+            "node": "If - CNPJ Válido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If - CNPJ Válido?": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook - Status 400",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Classificação empresa": {
+      "main": [
+        [
+          {
+            "node": "Code - Prepara para retorno de API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Prepara para retorno de API": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook - Status 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Busca dados do CNPJ": {
+      "main": [
+        [
+          {
+            "node": "Code - Classificação empresa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "24438565-fda6-4f11-b046-69c396360508",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4251c082cc9ffd6f5383fcb94d7efcbe37ea2a3225d8b00e7c33611c7b377917"
+  },
+  "id": "qQYIxUa9aIAlCMMQ",
+  "tags": [
+    {
+      "name": "Integre.me",
+      "id": "ye8SFyqj11JCBwn4",
+      "createdAt": "2025-10-28T05:24:41.855Z",
+      "updatedAt": "2025-10-28T05:24:41.855Z"
+    }
+  ]
+}
